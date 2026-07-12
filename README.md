@@ -232,6 +232,13 @@ The Node test runner executes **50 tests** across analytics, app integration, se
 
 A separate deterministic evaluation pipeline lives in `scripts/evaluate.js` and writes `public/data/evaluation-report.json` for the Trust center.
 
+## Validation metrics
+
+- **Analytics forecast coverage** — shared-cash warning lead time is validated at **6 simulated hours** and Nagad e-money warning lead time at **4 simulated hours** using `analytics.test.js` measured fixtures.
+- **System performance** — a 500-row analytics snapshot runs with **p95 latency below 100 ms** on the local prototype benchmark, confirmed by `performance.test.js`.
+- **Reliability and safety** — every generated alert is asserted to include evidence and uncertainty, and the AI briefing path is tested for missing-key / failure fallback behavior.
+- **Resilient persistence** — MongoDB Atlas connectivity is optional; the app falls back automatically to in-memory mode without losing core analytics or UI functionality.
+
 ---
 
 ## Limitations and non-goals
