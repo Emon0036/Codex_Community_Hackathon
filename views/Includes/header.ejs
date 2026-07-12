@@ -1,0 +1,33 @@
+<% if(currentUser){ %><nav class="navbar navbar-expand-xl fixed-top app-nav" aria-label="Main navigation">
+  <div class="container-fluid px-lg-4">
+    <a class="navbar-brand brand" href="/" aria-label="Nirapod Ops home"><span class="brand-mark"><i class="fa-solid fa-wave-square" aria-hidden="true"></i></span><span>Nirapod <b>Ops</b></span></a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <div class="navbar-nav mx-auto nav-pills-custom"><% navigationItems.forEach(item=>{ %>
+        <a class="nav-link <%= path === item.path ? 'active' : '' %>" href="<%= item.path %>"><i class="fa-solid <%= item.icon %>" aria-hidden="true"></i><span><%= item.label %></span></a>
+      <% }) %></div>
+      <div class="d-flex align-items-center gap-2 nav-meta">
+        <% if(canUseSimulationData){ %><a class="btn btn-soft simulation-data-link" href="/data#baseline-dataset" title="Historical synthetic baseline and simulation controls"><i class="fa-solid fa-database" aria-hidden="true"></i><span>Baseline Dataset</span></a><% } %>
+        <div class="dropdown role-switcher">
+          <button class="role-switcher-trigger dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Active role: <%= currentUser.demoLabel %>. Switch role.">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span class="role-switcher-copy"><small>Active role</small><strong><%= currentUser.demoLabel %></strong></span>
+          </button>
+          <form class="dropdown-menu dropdown-menu-end role-menu" action="/demo/role" method="post" aria-label="Switch role">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="currentPath" value="<%= path %>">
+            <span class="dropdown-header">Explore as</span>
+            <% demoRoles.forEach(role=>{ const active=role.id===currentUser.demoRole; %>
+              <button class="dropdown-item role-menu-item <%= active?'active':'' %>" type="submit" name="role" value="<%= role.id %>" aria-current="<%= active?'true':'false' %>">
+                <i class="fa-solid <%= role.icon %>" aria-hidden="true"></i><span><%= role.label %></span><i class="fa-solid fa-check role-menu-check" aria-hidden="true"></i>
+              </button>
+            <% }) %>
+          </form>
+        </div>
+        <span class="avatar" title="<%= currentUser.name %>"><%= currentUser.initials %></span>
+        <form action="/demo/exit" method="post"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="logout-button" aria-label="Exit demo" title="Exit demo"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></button></form>
+      </div>
+    </div>
+  </div>
+</nav>
+<% } %>

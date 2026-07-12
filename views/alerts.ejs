@@ -1,0 +1,66 @@
+<% layout("Layouts/boilerplate") %>
+<section class="container-fluid px-lg-4 page-space">
+  <div class="page-heading d-flex flex-wrap justify-content-between align-items-end gap-3">
+    <div><span class="eyebrow">Explainable by design</span><h1>Evidence, uncertainty, and a safe next step.</h1><p>Signals support human review. None is a fraud determination or financial command.</p></div>
+    <div class="ai-readiness <%= aiStatus.configured ? 'ready' : '' %>"><i class="fa-solid fa-brain" aria-hidden="true"></i><span>AI narrative</span><strong><%= aiStatus.configured ? 'OpenAI ready' : 'Deterministic fallback' %></strong><small><%= aiStatus.model %></small></div>
+  </div>
+
+  <% if(notice){ %><div class="notice" role="status"><%= notice %></div><% } %>
+  <div class="filter-bar" aria-label="Filter alerts">
+    <button class="filter active" data-filter="all" aria-pressed="true">All <%= data.alerts.length %></button>
+    <button class="filter" data-filter="shared" aria-pressed="false">Shared cash</button>
+    <% data.providers.forEach(p=>{ %><button class="filter" data-filter="<%= p.id %>" aria-pressed="false"><%= p.name %></button><% }) %>
+  </div>
+
+  <div class="alert-list">
+    <% data.alerts.forEach(alert=>{ const provider=data.providers.find(p=>p.id===alert.provider) || {name:'Shared cash',color:'#5B93B0'}; const linkedCase=data.cases.find(item=>item.alertId===alert.id && item.status!=='resolved') || data.cases.find(item=>item.alertId===alert.id); %>
+      <article class="glass-card alert-detail" id="<%= alert.id %>" data-provider="<%= alert.provider %>">
+        <div class="alert-top">
+          <span class="alert-icon <%= alert.severity %>" aria-hidden="true"><i class="fa-solid <%= alert.severity==='high'?'fa-exclamation':'fa-circle-info' %>"></i></span>
+          <div class="flex-grow-1">
+            <div class="d-flex flex-wrap gap-2 align-items-center"><span class="provider-chip" style="--provider:<%= provider.color %>"><%= provider.name %></span><span class="severity <%= alert.severity %>"><%= alert.severity %> priority</span><span class="status <%= alert.status %>"><%= alert.status %></span><% if(alert.baselineConfidence){ %><span class="status <%= alert.baselineConfidence==='HIGH'?'healthy':'watch' %>"><%= alert.baselineScopeUsed ? `baseline ${alert.baselineConfidence}` : 'history insufficient' %></span><% } %></div>
+            <h2><%= alert.title %></h2>
+            <p><%= alert.explanation %></p>
+          </div>
+          <% if(alert.baselineConfidence){ %><div class="confidence"><strong><%= alert.baselineScopeUsed ? alert.baselineConfidence : 'N/A' %></strong><span><%= alert.baselineScopeUsed ? 'sample confidence' : 'history unavailable' %></span></div><% } else { %><div class="confidence" style="--score:<%= Math.round(alert.confidence*100) %>%"><strong><%= Math.round(alert.confidence*100) %>%</strong><span>heuristic</span></div><% } %>
+        </div>
+
+        <% if(Array.isArray(alert.reasons) && alert.reasons.length){ %>
+          <section class="mt-3" aria-label="Current behavior compared with historical baseline">
+            <div class="card-heading">
+              <div><span class="eyebrow">Current behavior vs Historical baseline</span><h3>Structured baseline evidence</h3></div>
+              <% if(Number.isFinite(alert.advisoryRiskScore)){ %><span class="safe-tag"><i class="fa-solid fa-gauge" aria-hidden="true"></i> Advisory risk score: <%= alert.advisoryRiskScore %>/100</span><% } %>
+            </div>
+            <div class="table-responsive">
+              <table class="professional-table">
+                <thead><tr><th>Signal</th><th>Current</th><th>Historical baseline</th><th>Deviation</th><th>Reason</th></tr></thead>
+                <tbody>
+                  <% alert.reasons.forEach(reason=>{ %>
+                    <tr><td><b><%= String(reason.signal || '').replaceAll('_',' ') %></b></td><td><%= reason.currentDisplay || reason.currentValue %></td><td><%= reason.baselineDisplay || 'Insufficient historical evidence' %></td><td><%= reason.deviationDisplay || 'Use caution' %></td><td><%= reason.explanation %></td></tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+            <small class="muted">Scope used: <%= String(alert.baselineScopeUsed || 'not available').replaceAll('_',' + ') %><% if(alert.baselineSampleSize){ %> · <%= alert.baselineSampleSize %> historical transactions<% } %><% if(alert.account){ %> · Account <%= alert.account %><% } %> · <%= alert.requiresHumanReview ? 'Human review required.' : 'Monitor this indicator and review if operational context warrants.' %></small>
+          </section>
+        <% } %>
+
+        <div class="evidence-grid">
+          <div><span class="eyebrow">Why it surfaced</span><ul><% alert.evidence.forEach(item=>{ %><li><%= item %></li><% }) %></ul></div>
+          <div><span class="eyebrow">Safe recommendation</span><p><%= alert.recommendation %></p></div>
+          <div><span class="eyebrow">বাংলা সারাংশ</span><p lang="bn"><%= alert.banglaExplanation %></p><small lang="bn"><%= alert.banglaNextStep %></small></div>
+        </div>
+
+        <div class="alert-actions">
+          <button class="btn btn-outline-accent ai-explain" type="button" data-alert-id="<%= alert.id %>" aria-controls="ai-<%= alert.id %>"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Generate bilingual AI briefing</button>
+          <% if(linkedCase){ %>
+            <a class="btn btn-soft" href="/cases#<%= linkedCase.id %>"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> Open <%= linkedCase.id %></a>
+          <% } else if(alert.requiresHumanReview !== false && ['operations','risk','management'].includes(currentUser.role) && (alert.provider!=='shared' || ['risk','management'].includes(currentUser.role))){ %>
+            <form action="/alerts/<%= alert.id %>/cases" method="post"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn btn-soft" type="submit"><i class="fa-solid fa-briefcase" aria-hidden="true"></i> Create review case</button></form>
+          <% } %>
+        </div>
+        <div class="ai-output" id="ai-<%= alert.id %>" aria-live="polite" hidden></div>
+      </article>
+    <% }) %>
+  </div>
+</section>

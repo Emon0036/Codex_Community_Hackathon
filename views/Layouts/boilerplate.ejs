@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Provider-aware liquidity and operational risk decision support">
+  <meta name="theme-color" content="#F4FAFB">
+  <meta name="csrf-token" content="<%= csrfToken %>">
+  <title><%= title %> · Nirapod Ops</title>
+  <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/vendor/fontawesome/css/all.min.css" rel="stylesheet">
+  <link href="/vendor/plus-jakarta/400.css" rel="stylesheet">
+  <link href="/vendor/plus-jakarta/500.css" rel="stylesheet">
+  <link href="/vendor/plus-jakarta/600.css" rel="stylesheet">
+  <link href="/vendor/plus-jakarta/700.css" rel="stylesheet">
+  <link href="/vendor/plus-jakarta/800.css" rel="stylesheet">
+  <link href="/css/tailwind.generated.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/light-theme.css">
+</head>
+<body class="tw-antialiased">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <%- include("../Includes/header") %>
+  <main class="app-main" id="main-content"><%- body %></main>
+  <%- include("../Includes/footer") %>
+  <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/vendor/chartjs/chart.umd.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

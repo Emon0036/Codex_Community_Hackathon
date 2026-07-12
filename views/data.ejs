@@ -1,0 +1,218 @@
+<% layout("Layouts/boilerplate") %>
+<section class="container-fluid px-lg-4 page-space">
+  <div class="page-heading">
+    <span class="eyebrow">Simulation control · Synthetic data only</span>
+    <h1>Simulation Data</h1>
+    <p>Manage the historical baseline separately from current synthetic activity. Every change is validated, audited, and used only for decision support.</p>
+  </div>
+
+  <% if(notice){ %><div class="notice" role="status"><%= notice %></div><% } %>
+
+  <article class="glass-card mb-3" id="baseline-dataset">
+    <div class="card-heading">
+      <div>
+        <span class="eyebrow">Historical synthetic behavior</span>
+        <h2><i class="fa-solid fa-database" aria-hidden="true"></i> Baseline Dataset</h2>
+      </div>
+      <% if(baseline.latestImport){ %>
+        <span class="status <%= baseline.latestImport.baselineStatus==='complete'?'healthy':'watch' %>"><%= baseline.latestImport.baselineStatus %></span>
+      <% } else { %>
+        <span class="status watch">not imported</span>
+      <% } %>
+    </div>
+    <p class="muted">Upload historical synthetic transactions to calculate normal amount, timing, frequency, and repeated-amount behavior. An anomaly indicator is not proof of fraud.</p>
+
+    <div class="row g-3 align-items-start">
+      <div class="col-xl-5">
+        <form action="/data/baseline" method="post" enctype="multipart/form-data" class="upload-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div>
+            <label for="datasetName">Dataset / import name</label>
+            <input class="form-control" id="datasetName" name="datasetName" type="text" maxlength="120" placeholder="Historical synthetic baseline">
+          </div>
+          <label class="upload-box" for="baselineFile">
+            <i class="fa-solid fa-cloud-arrow-up upload-icon" aria-hidden="true"></i>
+            <span>Historical CSV · maximum 25,000 rows / 5 MB</span>
+            <input id="baselineFile" name="baselineFile" type="file" accept=".csv,text/csv" required>
+          </label>
+          <small class="muted">CSV schema supported: transaction_id, timestamp, day, agent_id, provider, area, transaction_type, amount, status, opening_provider_balance, closing_provider_balance, opening_physical_cash, closing_physical_cash, event_flag, case_status, heuristic_score, confidence, review_required.</small>
+          <button class="btn btn-accent" type="submit"><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Import and calculate baseline</button>
+        </form>
+        <% if(baseline.latestImport){ %>
+          <form action="/data/baseline/recalculate" method="post" class="mt-2">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn btn-soft" type="submit"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Recalculate stored baseline</button>
+          </form>
+          <% if(historicalData.visible){ %>
+            <a class="btn btn-soft mt-2" href="/data#baseline-dataset"><i class="fa-solid fa-eye-slash" aria-hidden="true"></i> Hide historical data</a>
+          <% } else { %>
+            <a class="btn btn-soft mt-2" href="/data?showHistorical=1#historical-data"><i class="fa-solid fa-table-list" aria-hidden="true"></i> Show all historical data</a>
+          <% } %>
+        <% } %>
+      </div>
+
+      <div class="col-xl-7">
+        <% if(baseline.latestImport){ const item=baseline.latestImport; %>
+          <div class="table-responsive">
+            <table class="professional-table">
+              <tbody>
+                <tr><th scope="row">Import</th><td><b><%= item.name %></b><br><small class="muted"><%= new Date(item.importedAt).toLocaleString('en-GB') %></small></td></tr>
+                <tr><th scope="row">Rows</th><td><%= item.totalRows.toLocaleString() %> total · <%= item.validRows.toLocaleString() %> valid · <%= item.invalidRows.toLocaleString() %> invalid</td></tr>
+                <tr><th scope="row">Coverage</th><td><%= item.providers.join(', ') %> · <%= item.accountsDetected.toLocaleString() %> synthetic accounts/agents</td></tr>
+                <tr><th scope="row">Calculation</th><td><%= item.baselineStatus %><% if(item.calculatedAt){ %> · <%= new Date(item.calculatedAt).toLocaleString('en-GB') %><% } %></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <% if(item.errorSummary?.length){ %>
+            <div class="boundary-note mt-2">
+              <b>Validation summary</b>
+              <ul class="mb-0"><% item.errorSummary.forEach(error=>{ %><li><%= error.count %> row(s): <%= error.field %> — <%= error.message %> (example row<%= error.exampleRows.length>1?'s':'' %> <%= error.exampleRows.join(', ') %>)</li><% }) %></ul>
+            </div>
+          <% } %>
+        <% } else { %>
+          <div class="boundary-note"><b>No historical baseline is loaded</b><span>Current behavior indicators remain low confidence until enough historical synthetic evidence is available.</span></div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <span class="eyebrow">Baseline Summary</span>
+      <% if(baseline.summaries.length){ %>
+        <div class="table-responsive">
+          <table class="professional-table">
+            <thead><tr><th>Provider</th><th>Historical transactions</th><th>Median amount</th><th>Median gap</th><th>Average velocity</th><th>P95 velocity</th><th>Confidence</th></tr></thead>
+            <tbody>
+              <% baseline.summaries.forEach(summary=>{ const provider=data.providers.find(item=>item.id===summary.provider) || {name:summary.provider}; %>
+                <tr>
+                  <td><b><%= provider.name %></b></td>
+                  <td><%= summary.sampleSize.toLocaleString() %></td>
+                  <td>৳<%= Number(summary.medianAmount).toLocaleString() %></td>
+                  <td><%= summary.medianTimeGapMinutes===null?'Not available':`${summary.medianTimeGapMinutes} min` %></td>
+                  <td><%= summary.avgTransactionsPerWindow %> / <%= summary.normalWindowMinutes %> min</td>
+                  <td><%= summary.p95TransactionsPerWindow %> / <%= summary.normalWindowMinutes %> min</td>
+                  <td><span class="status <%= summary.baselineConfidence==='HIGH'?'healthy':'watch' %>"><%= summary.baselineConfidence %></span></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <p class="muted mb-0">Calculated provider summaries will appear here after a successful import.</p>
+      <% } %>
+    </div>
+
+    <% if(historicalData.visible){ %>
+      <div class="mt-3" id="historical-data">
+        <div class="card-heading">
+          <div><span class="eyebrow">Stored historical rows</span><h2>All Historical Data</h2></div>
+          <span class="muted"><%= historicalData.totalRows.toLocaleString() %> rows</span>
+        </div>
+        <% if(historicalData.rows.length){ %>
+          <div class="table-responsive">
+            <table class="professional-table">
+              <thead><tr><th>Provider</th><th>Type</th><th>Amount</th><th>Account</th><th>Minute</th><th>Import</th><th>Row</th></tr></thead>
+              <tbody>
+                <% historicalData.rows.forEach(row=>{ %>
+                  <tr>
+                    <td><%= row.provider %></td>
+                    <td><%= row.type %></td>
+                    <td>৳<%= Number(row.amount).toLocaleString() %></td>
+                    <td><%= row.account %></td>
+                    <td><%= row.minute %></td>
+                    <td><%= row.importId %></td>
+                    <td><%= row.rowNumber || 'n/a' %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <p class="muted mb-0">No historical rows are stored yet.</p>
+        <% } %>
+      </div>
+    <% } %>
+
+    <div class="boundary-note mt-3">
+      <b><i class="fa-solid fa-ruler-combined" aria-hidden="true"></i> Validation evidence</b>
+      <span><%= baseline.metrics.validation.message %></span>
+      <span>Baseline calculation: <%= baseline.metrics.baselineCalculationDurationMs===null?'not available':`${baseline.metrics.baselineCalculationDurationMs} ms` %> · CSV processing: <%= baseline.metrics.importProcessingDurationMs===null?'not available':`${baseline.metrics.importProcessingDurationMs} ms` %> · High-impact alert explanation coverage: <%= baseline.metrics.explanationCoverage===null?'not available':`${baseline.metrics.explanationCoverage}% (${baseline.metrics.explainedAlerts}/${baseline.metrics.highImpactAlerts})` %></span>
+    </div>
+  </article>
+
+  <% if(canIngestData){ %><div class="row g-3">
+    <div class="col-xl-7">
+      <article class="glass-card h-100">
+        <div class="card-heading">
+          <div><span class="eyebrow">Balance snapshot</span><h2><i class="fa-solid fa-gauge-high" aria-hidden="true"></i> Record latest positions</h2></div>
+          <span class="safe-tag"><i class="fa-solid fa-lock" aria-hidden="true"></i> No transfer action</span>
+        </div>
+        <form action="/data/snapshot" method="post" class="data-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div>
+            <label for="sharedCash">Shared physical cash (৳)</label>
+            <input class="form-control" id="sharedCash" name="sharedCash" type="number" min="0" max="100000000" value="<%= data.outlet.sharedCash %>" <%= ['agent','management'].includes(currentUser.role) ? '' : 'readonly' %> required>
+            <% if(!['agent','management'].includes(currentUser.role)){ %><small class="muted">Visible only; outlet agent or management owns this value.</small><% } %>
+          </div>
+          <div>
+            <label for="provider">Provider ledger</label>
+            <select class="form-select" id="provider" name="provider" required><% data.providers.forEach(provider=>{ %><option value="<%= provider.id %>" data-balance="<%= provider.balance %>" data-alt="<%= provider.alternateBalance || '' %>" data-status="<%= provider.feedStatus %>" data-age="<%= provider.updatedMinutesAgo %>"><%= provider.name %></option><% }) %></select>
+          </div>
+          <div><label for="balance">Provider e-money (৳)</label><input class="form-control" id="balance" name="balance" type="number" min="0" max="100000000" value="<%= data.providers[0]?.balance || 0 %>" required></div>
+          <div><label for="feedStatus">Feed quality</label><select class="form-select" id="feedStatus" name="feedStatus"><option value="healthy">Healthy</option><option value="late">Late / missing</option><option value="conflicting">Conflicting sources</option></select></div>
+          <div><label for="alternateBalance">Secondary source balance (required if conflicting)</label><input class="form-control" id="alternateBalance" name="alternateBalance" type="number" min="0" max="100000000"></div>
+          <div><label for="updatedMinutesAgo">Minutes since update</label><input class="form-control" id="updatedMinutesAgo" name="updatedMinutesAgo" type="number" min="0" max="1440" value="2" required></div>
+          <button class="btn btn-accent" type="submit"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Validate and save snapshot</button>
+        </form>
+      </article>
+    </div>
+
+    <div class="col-xl-5">
+      <article class="glass-card h-100">
+        <span class="eyebrow">Current activity CSV</span>
+        <h2><i class="fa-solid fa-file-csv" aria-hidden="true"></i> Import current synthetic transactions</h2>
+        <p class="muted">Accepted headers match the historical dataset format, including the hackathon schema columns <code>transaction_id</code>, <code>timestamp</code>, <code>day</code>, <code>agent_id</code>, <code>provider</code>, <code>area</code>, <code>transaction_type</code>, <code>amount</code>, <code>status</code>, <code>opening_provider_balance</code>, <code>closing_provider_balance</code>, <code>opening_physical_cash</code>, <code>closing_physical_cash</code>, <code>event_flag</code>, <code>case_status</code>, <code>heuristic_score</code>, <code>confidence</code>, and <code>review_required</code>. Account labels receive the same keyed pseudonym before database storage.</p>
+        <form action="/data/transactions" method="post" enctype="multipart/form-data" class="upload-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <label class="upload-box" for="transactions"><i class="fa-solid fa-cloud-arrow-up upload-icon" aria-hidden="true"></i><span>Current CSV · maximum 500 rows / 512 KB</span><input id="transactions" name="transactions" type="file" accept=".csv,text/csv" required></label>
+          <button class="btn btn-accent" type="submit"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Import current data and rerun detection</button>
+        </form>
+        <% if(currentImport.latestImport){ %>
+          <% if(currentImport.visible){ %>
+            <a class="btn btn-soft mt-2" href="/data#current-data"><i class="fa-solid fa-eye-slash" aria-hidden="true"></i> Hide current data</a>
+          <div class="table-responsive mt-3" id="current-data">
+            <table class="professional-table">
+              <caption class="visually-hidden">Latest uploaded current CSV rows</caption>
+              <thead><tr><% currentImport.headers.forEach(header=>{ %><th><%= header %></th><% }) %></tr></thead>
+              <tbody>
+                <% currentImport.rows.forEach(row=>{ const csvRow=row.csvRow || {provider:row.provider,type:row.type,amount:row.amount,account:row.account,minute:row.minute}; %>
+                  <tr><% currentImport.headers.forEach(header=>{ %><td><%= csvRow[header] ?? '' %></td><% }) %></tr><% if(false){ %>
+                    <td><%= row.provider %></td>
+                    <td><%= row.type %></td>
+                    <td>৳<%= Number(row.amount).toLocaleString() %></td>
+                    <td><%= row.account %></td>
+                    <td><%= row.minute %></td>
+                  </tr><% } %>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <small class="muted">Dataset <%= currentImport.latestImport.importId %>: showing <%= currentImport.rows.length %> of <%= currentImport.totalRows %> stored rows from the latest upload at <%= new Date(currentImport.latestImport.importedAt).toLocaleString('en-GB') %>.</small>
+          <% } else { %>
+            <a class="btn btn-soft mt-2" href="/data?showCurrent=1#current-data"><i class="fa-solid fa-table-list" aria-hidden="true"></i> Show current data</a>
+          <% } %>
+        <% } %>
+        <div class="boundary-note"><b><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacy protection</b><span>Never upload real credentials, phone numbers, NIDs, PINs, OTPs, or production transaction data.</span></div>
+      </article>
+    </div>
+  </div><% } %>
+
+  <article class="glass-card mt-3">
+    <div class="card-heading"><div><span class="eyebrow">Current feed state</span><h2>Provider separation monitor</h2></div><span class="muted"><%= new Date(data.outlet.lastSync).toLocaleString('en-GB') %></span></div>
+    <div class="table-responsive">
+      <table class="professional-table">
+        <thead><tr><th scope="col">Provider ledger</th><th scope="col">Current balance</th><th scope="col">Feed quality</th><th scope="col">Freshness</th></tr></thead>
+        <tbody><% data.providers.forEach(provider=>{ %><tr><td><i class="table-provider-dot" style="background:<%= provider.color %>"></i><b><%= provider.name %></b></td><td>৳<%= provider.balance.toLocaleString() %></td><td><span class="status <%= provider.feedStatus==='healthy'?'healthy':'watch' %>"><%= provider.feedStatus %></span></td><td><%= provider.updatedMinutesAgo %> min old</td></tr><% }) %></tbody>
+      </table>
+    </div>
+  </article>
+</section>

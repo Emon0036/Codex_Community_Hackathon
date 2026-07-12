@@ -1,0 +1,9 @@
+provider,type,amount,account,minute
+nagad,cash-out,9850,SYN-A100,4
+nagad,cash-out,9900,SYN-B200,7
+nagad,cash-out,9850,SYN-A100,10
+nagad,cash-out,9900,SYN-C300,13
+nagad,cash-out,9850,SYN-B200,16
+bkash,cash-in,3200,SYN-D400,22
+rocket,cash-out,4500,SYN-E500,26
+ 

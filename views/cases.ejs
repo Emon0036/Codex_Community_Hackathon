@@ -1,0 +1,114 @@
+<% layout("Layouts/boilerplate") %>
+<section class="container-fluid px-lg-4 page-space">
+  <div class="page-heading d-flex flex-wrap justify-content-between align-items-end gap-3">
+    <div>
+      <span class="eyebrow">Human-owned response</span>
+      <h1>Every signal has a visible path to resolution.</h1>
+      <p>Receiver → owner → acknowledge → evidence note → escalate → resolve. Every action enters the audit trail.</p>
+    </div>
+    <div class="workflow-legend" aria-label="Workflow rules">
+      <i class="fa-solid fa-route" aria-hidden="true"></i>
+      <span><b>Guided workflow</b><small>Steps cannot be skipped</small></span>
+    </div>
+  </div>
+
+  <% if(notice){ %><div class="notice" role="status"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <%= notice %></div><% } %>
+  <% if(!data.cases.length){ %>
+    <div class="glass-card empty-state"><i class="fa-regular fa-folder-open" aria-hidden="true"></i><h2>No cases in this role’s boundary</h2><p class="muted">Create a human-review case from an eligible alert.</p><a class="btn btn-accent" href="/alerts">Review alerts</a></div>
+  <% } %>
+
+  <% data.cases.forEach(item=>{
+    const provider=data.providers.find(p=>p.id===item.provider) || {name:'Shared cash',color:'#5B93B0'};
+    const related=data.alerts.filter(alert=>alert.provider===item.provider);
+    const canAct=['operations','risk','management'].includes(currentUser.role);
+    const labels={receiver:'Receiver',owner:'Owner',acknowledged:'Acknowledge',note:'Evidence note',escalated:'Escalate',resolved:'Resolve'};
+    const icons={receiver:'fa-inbox',owner:'fa-user-check',acknowledged:'fa-hand',note:'fa-note-sticky',escalated:'fa-arrow-up-right-dots',resolved:'fa-circle-check'};
+    const timeline=[...item.history.filter(event=>event.action!=='Case note added').map(event=>({...event,kind:'action'})),...(item.notes||[]).map(note=>({at:note.at,actor:note.actor,action:note.text,kind:'note'}))].sort((a,b)=>new Date(b.at)-new Date(a.at));
+  %>
+  <article class="glass-card case-card" id="<%= item.id %>">
+    <div class="case-head">
+      <div>
+        <div class="d-flex flex-wrap align-items-center gap-2"><span class="provider-chip" style="--provider:<%= provider.color %>"><%= provider.name %></span><span class="severity <%= item.severity %>"><%= item.severity %> priority</span><span class="case-status status <%= item.status %>"><%= item.status %></span></div>
+        <h2><%= item.id %> <span>· <%= item.alertId %></span></h2>
+        <p><%= related.length %> related signal<%= related.length===1?'':'s' %> visible inside this provider boundary.</p>
+      </div>
+      <div class="case-progress-copy"><strong><%= item.workflow.percent %>%</strong><span><%= item.workflow.completedCount %> of <%= workflowSteps.length %> steps complete</span></div>
+    </div>
+
+    <div class="case-stepper" role="list" aria-label="Case workflow progress">
+      <% workflowSteps.forEach((step,index)=>{ const done=item.workflow.completed[step]; const current=item.workflow.current===step; %>
+        <div class="case-step <%= done?'complete':'' %> <%= current?'current':'' %>" role="listitem" aria-current="<%= current?'step':'false' %>">
+          <span class="step-icon"><i class="fa-solid <%= done?'fa-check':icons[step] %>" aria-hidden="true"></i></span>
+          <span class="step-copy"><small>Step <%= index+1 %></small><b><%= labels[step] %></b></span>
+        </div>
+      <% }) %>
+    </div>
+    <div class="case-progress-track" aria-hidden="true"><span style="width:<%= item.workflow.percent %>%"></span></div>
+
+    <div class="case-context-grid">
+      <div><span><i class="fa-solid fa-inbox" aria-hidden="true"></i> Routed receiver</span><strong><%= item.recipient %></strong></div>
+      <div><span><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Accountable owner</span><strong><%= item.owner || 'Awaiting assignment' %></strong></div>
+      <div><span><i class="fa-solid fa-compass" aria-hidden="true"></i> Safe next step</span><strong><%= item.nextStep %></strong></div>
+    </div>
+
+    <div class="row g-4 mt-1">
+      <div class="col-xl-7">
+        <div class="card-heading case-section-heading"><div><span class="eyebrow">Chronological evidence</span><h3>Case timeline</h3></div><span class="timeline-count"><%= timeline.length %> events</span></div>
+        <div class="timeline case-timeline">
+          <% timeline.forEach((event,index)=>{ %>
+            <div class="timeline-event <%= event.kind %>">
+              <i class="fa-solid <%= event.kind==='note'?'fa-note-sticky':index===0?'fa-location-dot':'fa-check' %>" aria-hidden="true"></i>
+              <span><b><%= event.action %></b><small><%= event.actor %> · <time datetime="<%= event.at %>"><%= new Date(event.at).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}) %></time></small></span>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+
+      <div class="col-xl-5">
+        <div class="case-action-panel">
+          <div class="action-panel-head"><span class="step-icon current"><i class="fa-solid <%= item.workflow.current==='complete'?'fa-circle-check':icons[item.workflow.current] %>" aria-hidden="true"></i></span><div><span class="eyebrow">Current task</span><h3><%= item.workflow.current==='complete'?'Workflow complete':labels[item.workflow.current] %></h3></div></div>
+
+          <% if(!canAct){ %><div class="action-guidance"><i class="fa-solid fa-eye" aria-hidden="true"></i><span>This role has read-only case access.</span></div><% } %>
+
+          <% if(canAct && item.status!=='resolved'){ %>
+            <form method="post" action="/cases/<%= item.id %>/assign" class="compact-action">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <label class="form-label" for="owner-<%= item.id %>">Assign accountable owner</label>
+              <div class="input-action"><select id="owner-<%= item.id %>" name="ownerId" class="form-select"><% owners.filter(owner=>!owner.provider || owner.provider===item.provider).forEach(owner=>{ %><option value="<%= owner.id %>" <%= owner.id===item.ownerId?'selected':'' %>><%= owner.name %> · <%= owner.role %></option><% }) %></select><button class="btn btn-soft" type="submit">Assign</button></div>
+            </form>
+          <% } %>
+
+          <% if(canAct && item.status==='open' && item.ownerId){ %>
+            <div class="action-guidance"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>Confirm the receiver and owner have accepted responsibility.</span></div>
+            <form method="post" action="/cases/<%= item.id %>/status"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="status" value="acknowledged"><button class="btn btn-accent w-100" type="submit"><i class="fa-solid fa-hand" aria-hidden="true"></i> Acknowledge case</button></form>
+          <% } %>
+          <% if(canAct && item.status==='open' && !item.ownerId){ %><button class="btn btn-disabled w-100" type="button" disabled><i class="fa-solid fa-lock" aria-hidden="true"></i> Assign an owner to continue</button><small class="locked-help">The selected owner must perform the remaining workflow actions.</small><% } %>
+
+          <% if(canAct && ['acknowledged','escalated'].includes(item.status)){ %>
+            <form method="post" action="/cases/<%= item.id %>/notes" class="note-action">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <label class="form-label" for="note-<%= item.id %>"><%= item.notes?.length?'Add another evidence note':'Record evidence before escalation' %></label>
+              <textarea id="note-<%= item.id %>" name="note" class="form-control" minlength="3" maxlength="700" placeholder="What was verified, by whom, and what happened next?" required></textarea>
+              <small>Notes are attributed and become part of the audit record.</small>
+              <button class="btn btn-soft w-100" type="submit"><i class="fa-solid fa-note-sticky" aria-hidden="true"></i> Add auditable note</button>
+            </form>
+          <% } %>
+
+          <% if(canAct && item.status==='acknowledged'){ %>
+            <% if(item.notes?.length){ %><form method="post" action="/cases/<%= item.id %>/status"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="status" value="escalated"><button class="btn btn-warning-action w-100" type="submit"><i class="fa-solid fa-arrow-up-right-dots" aria-hidden="true"></i> Escalate with evidence</button></form>
+            <% } else { %><button class="btn btn-disabled w-100" type="button" disabled><i class="fa-solid fa-lock" aria-hidden="true"></i> Escalate after a note</button><small class="locked-help">Evidence note is required before escalation.</small><% } %>
+          <% } %>
+
+          <% if(canAct && item.status==='escalated'){ %>
+            <div class="action-guidance success"><i class="fa-solid fa-check-double" aria-hidden="true"></i><span>Escalation is recorded. Resolve only after the response has been verified.</span></div>
+            <form method="post" action="/cases/<%= item.id %>/status"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="status" value="resolved"><button class="btn btn-resolve w-100" type="submit"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Verify and resolve</button></form>
+          <% } %>
+
+          <% if(item.status==='resolved'){ %><div class="resolved-panel"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><div><b>Resolution recorded</b><span>Completed <%= new Date(item.resolvedAt).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}) %>. This case is now read-only.</span></div></div><% } %>
+        </div>
+        <div class="boundary-note"><b><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Provider boundary intact</b><span>Case actions cannot access, combine, or alter another provider’s balance.</span></div>
+      </div>
+    </div>
+  </article>
+  <% }) %>
+</section>

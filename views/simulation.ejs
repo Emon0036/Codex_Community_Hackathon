@@ -1,0 +1,55 @@
+<% layout("Layouts/boilerplate") %>
+<section class="container-fluid px-lg-4 page-space">
+  <div class="page-heading d-flex flex-wrap justify-content-between align-items-end gap-3">
+    <div><span class="eyebrow">Baseline versus scenario</span><h1>See exactly what changes under stress.</h1><p>Compare the fixed 1.0× baseline with demand and feed disruption scenarios. No financial action is executed.</p></div>
+    <div class="scenario-badge"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i><span><b>Controlled comparison</b><small>Same balances · same 6-hour horizon</small></span></div>
+  </div>
+
+  <div id="scenarioFlash" class="scenario-flash" hidden aria-live="polite"></div>
+
+  <div class="row g-3">
+    <div class="col-xl-3 col-lg-4">
+      <article class="glass-card scenario-controls-card">
+        <div class="card-heading"><div><span class="eyebrow">Inputs</span><h2><i class="fa-solid fa-sliders" aria-hidden="true"></i> Scenario controls</h2></div></div>
+        <form id="simulationForm">
+          <label class="form-label" for="demandMultiplier">Demand multiplier <output id="demandValue">1.5×</output></label>
+          <input class="form-range" type="range" id="demandMultiplier" name="demandMultiplier" min="0.5" max="3" step="0.1" value="1.5">
+          <div class="range-scale"><span>0.5×</span><span>Baseline 1.0×</span><span>3.0×</span></div>
+          <label class="form-label mt-4" for="providerDemandProvider">Provider demand focus</label>
+          <select class="form-select" id="providerDemandProvider" name="providerDemandProvider"><option value="all">All providers</option><% data.providers.forEach(p=>{ %><option value="<%= p.id %>"><%= p.name %></option><% }) %></select>
+          <label class="form-label mt-3" for="providerDemandMultiplier">Provider pressure <output id="providerDemandValue">1.0x</output></label>
+          <input class="form-range" type="range" id="providerDemandMultiplier" name="providerDemandMultiplier" min="1" max="3" step="0.1" value="1">
+          <div class="range-scale"><span>1.0x</span><span>Focused demand</span><span>3.0x</span></div>
+          <label class="form-label mt-4" for="localEvent">Local event</label>
+          <select class="form-select" id="localEvent" name="localEvent"><option value="none">No local event</option><option value="market_day">Market day</option><option value="festival_payout">Festival payout</option><option value="weather_disruption">Weather disruption</option></select>
+          <label class="form-label mt-3" for="agentAvailability">Agent availability</label>
+          <select class="form-select" id="agentAvailability" name="agentAvailability"><option value="normal">Normal staffing</option><option value="limited">Limited coverage</option><option value="unavailable">Agent unavailable</option></select>
+          <label class="form-label mt-4" for="missingProvider">Feed disruption</label>
+          <select class="form-select" id="missingProvider" name="missingProvider"><option value="">All feeds available</option><% if(data.providers.length){ data.providers.forEach(p=>{ %><option value="<%= p.id %>"><%= p.name %> feed missing</option><% }) } else { %><option value="" disabled>No provider feeds in scope</option><% } %></select>
+          <button class="btn btn-accent w-100 mt-4" type="submit"><i class="fa-solid fa-play" aria-hidden="true"></i> Compare scenario</button>
+        </form>
+        <div class="boundary-note mt-3"><b><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Advisory sandbox</b><span>Uses synthetic demand and mock balances. Results are decision support, never an instruction.</span></div>
+      </article>
+    </div>
+
+    <div class="col-xl-9 col-lg-8">
+      <article class="glass-card scenario-result-card">
+        <div class="card-heading"><div><span class="eyebrow">Comparison result</span><h2>Baseline 1.0× vs selected scenario</h2><p id="scenarioDescription">Preparing the default 1.5× demand comparison…</p></div><span id="simState" class="status watch" aria-live="polite">Loading</span></div>
+        <div id="scenarioSummary" class="scenario-summary" aria-live="polite"><div class="summary-placeholder"></div><div class="summary-placeholder"></div><div class="summary-placeholder"></div></div>
+        <div class="scenario-chart-wrap"><canvas id="scenarioComparisonChart" role="img" aria-label="Baseline and scenario closing balance comparison"></canvas></div>
+      </article>
+    </div>
+  </div>
+
+  <article class="glass-card mt-3">
+    <div class="card-heading"><div><span class="eyebrow">Ledger-by-ledger evidence</span><h2>Runway, alert severity, and confidence changes</h2></div><span class="legend-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Closing balances are floored at zero; raw shortage timing remains visible.</span></div>
+    <div class="table-responsive"><table class="professional-table scenario-table"><thead><tr><th scope="col">Ledger</th><th scope="col">Baseline 1.0×</th><th scope="col">Selected scenario</th><th scope="col">Measured change</th></tr></thead><tbody id="scenarioComparisonBody"><tr><td colspan="4" class="muted">Running the default comparison…</td></tr></tbody></table></div>
+  </article>
+
+  <article class="glass-card mt-3 scenario-coordination-panel">
+    <div class="card-heading"><div><span class="eyebrow">Coordination</span><h2><i class="fa-solid fa-people-arrows" aria-hidden="true"></i> Responsible stakeholder and nearby support</h2></div><span class="legend-note"><i class="fa-solid fa-lock" aria-hidden="true"></i> Advisory discovery only</span></div>
+    <div id="scenarioCoordination" class="scenario-coordination-grid" aria-live="polite"><div class="summary-placeholder"></div><div class="summary-placeholder"></div><div class="summary-placeholder"></div></div>
+  </article>
+
+  <div class="scenario-rule-note"><i class="fa-solid fa-calculator" aria-hidden="true"></i><div><b>How comparison is held fair</b><span>Both runs start from the same ledger balances and use the same six-hour horizon. Demand, local-event, feed, and availability inputs are changed only inside this sandbox.</span></div><a href="/methodology#decision-flow">See methods</a></div>
+</section>
