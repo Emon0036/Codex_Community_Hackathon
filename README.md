@@ -215,8 +215,24 @@ views/                       EJS templates (dashboard, alerts, cases, simulation
 - **Provider-scoped RBAC** minimizes exposure — the Operations Team role cannot read or mutate another provider's data, alerts, cases, baselines, or CSV imports.
 - **Server-side secrets.** Database and API keys remain server-side environment variables; nothing is shipped to the browser.
 - **Common web risks reduced** — CSP, CSRF, secure cookie settings, rate limits, input limits, escaped output, and audit records.
-- **AI boundary** — deterministic code creates signals, evidence, severity, confidence, recipient, safe next step, and allowed workflow states. OpenAI is optional and generates only English/Bangla explanatory language from an allowlist of aggregate alert fields. Zod enforces the response shape; a deterministic policy gate rejects allegations and financial-action language. Model-proposed next steps are discarded and replaced with rule-based recommendations.
-- **No invented facts** — the prompt prohibits invented facts, allegations, guilt, financial commands, and cross-provider transfer advice. Successful AI records store model name, prompt version, evidence hash, generation time, and human requester for traceability. Fallback results are not cached, so a restored AI service recovers gracefully.
+- **AI boundary** — deterministic code creates signals, evidence, severity, confidence, recipient, safe next step, and allowed workflow states. OpenAI is optional and generates only English/Bangla explanatory language from an allowlist of aggregate alert fields.
+- **No automation of financial actions.** The prototype does not perform transfers, settlement, reversals, blocking, provider conversion, fraud decisions, or customer risk scoring.
+- **False positives are expected.** Alerts are framed as “unusual” or “requires review,” with evidence and uncertainty visible.
+- **Deterministic fallback.** A missing key, refusal, timeout, network error, unsafe language, or invalid schema returns a deterministic fallback. The request uses `store: false`, a short timeout, one retry, and no web/tool access.
+
+## Responsible design note
+
+- Human review first: every case is owned by a person and every workflow change is manual.
+- Privacy: synthetic data only, no authentication secrets are requested, and sensitive credentials stay server-side.
+- Advisory boundary: AI is only an optional explanatory layer; deterministic rules own signals and recommendations.
+- Prototype limits: no money movement, provider transfer, account blocking, fraud verdicts, or automated financial commands.
+
+## Data and simulation note
+
+- The app runs on synthetic seed data from `data/demoData.js` and `sample-data/transactions.csv`.
+- CSV ingestion is validated with Zod and pseudonymized with keyed HMAC.
+- Forecasts and alert metrics are tested deterministically through `scripts/evaluate.js` and offline fixtures.
+- This is a simulation prototype, not a live provider integration or production settlement system.
 
 The full responsible-design note lives in [`docs/RESPONSIBLE_DESIGN.md`](docs/RESPONSIBLE_DESIGN.md).
 
